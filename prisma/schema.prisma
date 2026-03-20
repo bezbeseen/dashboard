@@ -1,0 +1,121 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum ProductionStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  READY
+  DELIVERED
+}
+
+enum BoardStatus {
+  REQUESTED
+  QUOTED
+  APPROVED
+  PRODUCTION
+  READY
+  INVOICED
+  DELIVERED
+  PAID
+}
+
+enum EstimateStatus {
+  UNKNOWN
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+}
+
+enum InvoiceStatus {
+  NONE
+  DRAFT
+  OPEN
+  PAID
+  VOID
+}
+
+enum EventSource {
+  QUICKBOOKS
+  APP
+  SYSTEM
+}
+
+enum EventProcessStatus {
+  RECEIVED
+  PROCESSED
+  FAILED
+}
+
+model Job {
+  id                   String            @id @default(cuid())
+  quickbooksCompanyId  String?
+  quickbooksCustomerId String?
+  quickbooksEstimateId String?           @unique
+  quickbooksInvoiceId  String?           @unique
+  customerName         String
+  projectName          String
+  estimateStatus       EstimateStatus    @default(UNKNOWN)
+  invoiceStatus        InvoiceStatus     @default(NONE)
+  estimateAmountCents  Int               @default(0)
+  invoiceAmountCents   Int               @default(0)
+  amountPaidCents      Int               @default(0)
+  estimateSentAt       DateTime?
+  estimateAcceptedAt   DateTime?
+  productionStatus     ProductionStatus  @default(NOT_STARTED)
+  startedAt            DateTime?
+  readyAt              DateTime?
+  deliveredAt          DateTime?
+  paidAt               DateTime?
+  boardStatus          BoardStatus       @default(REQUESTED)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  activityLogs         ActivityLog[]
+
+  @@index([boardStatus])
+}
+
+model ActivityLog {
+  id        String       @id @default(cuid())
+  jobId      String
+  source     EventSource
+  eventName  String
+  message    String
+  metadata   Json?
+  createdAt  DateTime     @default(now())
+  job        Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId, createdAt])
+}
+
+model QuickBooksWebhookEvent {
+  id                String              @id @default(cuid())
+  providerEventKey  String              @unique
+  realmId           String?
+  entityType        String
+  entityId          String
+  operation         String
+  payload           Json
+  status            EventProcessStatus  @default(RECEIVED)
+  errorText         String?
+  receivedAt        DateTime            @default(now())
+  processedAt       DateTime?
+}
+
+/// Stored OAuth tokens after Connect QuickBooks (one row per QBO company / realmId).
+model QuickBooksToken {
+  id                      String    @id @default(cuid())
+  realmId                 String    @unique
+  accessToken             String
+  refreshToken            String
+  accessTokenExpiresAt    DateTime
+  refreshTokenExpiresAt   DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+}

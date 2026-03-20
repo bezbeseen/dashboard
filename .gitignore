@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Env & secrets (use .env.example in repo)
+.env
+.env.*.local
+
+# Local DB (Prisma SQLite dev)
+*.db
+*.db-journal
+prisma/dev.db*
+
+# Debug / OS
+.DS_Store
+*.log
+npm-debug.log*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Vercel
+.vercel
+
+# Test / coverage
+coverage/
