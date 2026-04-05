@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.5.0",
+    "prisma": "^6.5.0",
     "googleapis": "^144.0.0",
     "next": "^15.2.8",
     "react": "19.0.0",
@@ -28,7 +29,6 @@
     "@types/node": "^22.13.14",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
-    "prisma": "^6.5.0",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2"
   }
