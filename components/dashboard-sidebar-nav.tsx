@@ -53,6 +53,24 @@ export function DashboardSidebarNav() {
           <div className="menu-title">Activity</div>
         </Link>
       </li>
+      <li className={ticketsActive ? 'mm-active' : ''}>
+        <Link href="/dashboard/tickets">
+          <div className="parent-icon">
+            <i className="material-icons-outlined">confirmation_number</i>
+          </div>
+          <div className="menu-title">Tickets</div>
+        </Link>
+      </li>
+      <li className={doneActive ? 'mm-active' : ''}>
+        <Link href="/dashboard/done">
+          <div className="parent-icon">
+            <i className="material-icons-outlined">task_alt</i>
+          </div>
+          <div className="menu-title">Done</div>
+        </Link>
+      </li>
+
+      <li className="menu-label">Money</li>
       <li className={accountingActive ? 'mm-active' : ''}>
         <Link href="/dashboard/accounting">
           <div className="parent-icon">
@@ -69,30 +87,13 @@ export function DashboardSidebarNav() {
           <div className="menu-title">Cash &amp; banks</div>
         </Link>
       </li>
+
       <li className={gbpMetricsActive ? 'mm-active' : ''}>
         <Link href="/dashboard/gbp">
           <div className="parent-icon">
             <i className="material-icons-outlined">insights</i>
           </div>
           <div className="menu-title">GBP metrics</div>
-        </Link>
-      </li>
-
-      <li className="menu-label">Board</li>
-      <li className={ticketsActive ? 'mm-active' : ''}>
-        <Link href="/dashboard/tickets">
-          <div className="parent-icon">
-            <i className="material-icons-outlined">confirmation_number</i>
-          </div>
-          <div className="menu-title">Tickets</div>
-        </Link>
-      </li>
-      <li className={doneActive ? 'mm-active' : ''}>
-        <Link href="/dashboard/done">
-          <div className="parent-icon">
-            <i className="material-icons-outlined">task_alt</i>
-          </div>
-          <div className="menu-title">Done</div>
         </Link>
       </li>
 
