@@ -10,6 +10,7 @@ import {
 } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { deriveBoardStatus } from '@/lib/domain/derive-board-status';
+import { sanitizeJobProjectDescription } from '@/lib/domain/job-display';
 import {
   computeQbOrderingAt,
   estimateCreatedAtFromSnapshot,
@@ -66,6 +67,7 @@ export async function upsertJobFromEstimate(
       quickbooksCustomerId: snapshot.customerId,
       customerName: snapshot.customerName,
       projectName: snapshot.projectName,
+      projectDescription: sanitizeJobProjectDescription(snapshot.projectName, snapshot.projectDescription),
       estimateStatus,
       estimateAmountCents: snapshot.totalAmtCents,
       estimateSentAt: snapshot.txnDate ? new Date(snapshot.txnDate) : undefined,
@@ -86,6 +88,7 @@ export async function upsertJobFromEstimate(
             quickbooksCustomerId: snapshot.customerId,
             customerName: snapshot.customerName,
             projectName: snapshot.projectName,
+            projectDescription: sanitizeJobProjectDescription(snapshot.projectName, snapshot.projectDescription),
             estimateStatus,
             estimateAmountCents: snapshot.totalAmtCents,
             estimateSentAt: snapshot.txnDate ? new Date(snapshot.txnDate) : undefined,
@@ -143,11 +146,18 @@ export async function upsertJobFromInvoice(
       invoiceCreatedAtQbo: nextInvCreated,
     });
 
+    const nextProjectName = target?.projectName ?? `Invoice #${snapshot.docNumber ?? snapshot.id}`;
+    const fromInvoice = sanitizeJobProjectDescription(nextProjectName, snapshot.projectDescription);
+    const preserved = sanitizeJobProjectDescription(
+      target?.projectName ?? nextProjectName,
+      target?.projectDescription,
+    );
     const updatePayload: Prisma.JobUncheckedUpdateInput = {
       quickbooksInvoiceId: snapshot.id,
       quickbooksCustomerId: snapshot.customerId,
       customerName: snapshot.customerName,
-      projectName: target?.projectName ?? `Invoice #${snapshot.docNumber ?? snapshot.id}`,
+      projectName: nextProjectName,
+      projectDescription: fromInvoice ?? preserved ?? null,
       invoiceStatus: mapInvoiceStatus(snapshot.status),
       invoiceAmountCents: snapshot.totalAmtCents,
       amountPaidCents: snapshot.amountPaidCents,
@@ -166,6 +176,10 @@ export async function upsertJobFromInvoice(
             quickbooksCustomerId: snapshot.customerId,
             customerName: snapshot.customerName,
             projectName: `Invoice #${snapshot.docNumber ?? snapshot.id}`,
+            projectDescription: sanitizeJobProjectDescription(
+              `Invoice #${snapshot.docNumber ?? snapshot.id}`,
+              snapshot.projectDescription,
+            ),
             invoiceStatus: mapInvoiceStatus(snapshot.status),
             invoiceAmountCents: snapshot.totalAmtCents,
             amountPaidCents: snapshot.amountPaidCents,

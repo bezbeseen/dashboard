@@ -56,6 +56,9 @@ type QboEstimate = {
   TotalAmt?: number | string;
   DocNumber?: string;
   CustomerRef?: QboRef;
+  /** QBO may return a string or `{ value: "..." }`. */
+  CustomerMemo?: string | { value?: string; Value?: string };
+  Line?: unknown[];
   MetaData?: QboMeta;
 };
 
@@ -74,10 +77,71 @@ type QboInvoice = {
   LinkedTxn?: QboLinkedTxn[];
   BillEmail?: QboEmailAddr;
   BillEmailCc?: QboEmailAddr;
-  CustomerMemo?: string;
+  CustomerMemo?: string | { value?: string; Value?: string };
   PrivateNote?: string;
+  Line?: unknown[];
   MetaData?: QboMeta;
 };
+
+const QBO_DESC_MAX = 2000;
+
+function qboStringishMemo(raw: unknown): string {
+  if (typeof raw === 'string') return raw.trim();
+  if (raw && typeof raw === 'object') {
+    const o = raw as Record<string, unknown>;
+    const v = o.value ?? o.Value;
+    if (typeof v === 'string') return v.trim();
+  }
+  return '';
+}
+
+function clip(s: string): string {
+  return s.length > QBO_DESC_MAX ? s.slice(0, QBO_DESC_MAX) : s;
+}
+
+function qboLineHumanText(line: unknown): string | undefined {
+  if (!line || typeof line !== 'object') return undefined;
+  const o = line as Record<string, unknown>;
+  const dt = String(o.DetailType || '');
+  if (dt === 'SubTotalLineDetail' || dt === 'DiscountLineDetail') return undefined;
+
+  const d = typeof o.Description === 'string' ? o.Description.trim() : '';
+  if (d) return clip(d);
+
+  const sid = o.SalesItemLineDetail as { ItemRef?: { name?: string } } | undefined;
+  const itemName = sid?.ItemRef?.name?.trim();
+  if (itemName) return clip(itemName);
+
+  if (dt === 'GroupLineDetail') {
+    const g = o.GroupLineDetail as { Line?: unknown[] } | undefined;
+    const nested = qboFirstLineDescription(g?.Line);
+    if (nested) return nested;
+  }
+
+  return undefined;
+}
+
+function qboFirstLineDescription(lines: unknown): string | undefined {
+  if (!Array.isArray(lines)) return undefined;
+  for (const line of lines) {
+    const text = qboLineHumanText(line);
+    if (text) return text;
+  }
+  return undefined;
+}
+
+function estimateProjectDescription(e: QboEstimate): string | undefined {
+  const memo = qboStringishMemo(e.CustomerMemo as unknown);
+  if (memo) return clip(memo);
+  const fromLine = qboFirstLineDescription(e.Line);
+  return fromLine;
+}
+
+function invoiceProjectDescription(inv: QboInvoice): string | undefined {
+  const memo = qboStringishMemo(inv.CustomerMemo as unknown) || (inv.PrivateNote?.trim() ?? '');
+  if (memo) return clip(memo);
+  return qboFirstLineDescription(inv.Line);
+}
 
 export async function quickBooksCompanyJson(realmId: string, path: string): Promise<unknown> {
   const token = await getValidQuickBooksAccessToken(realmId);
@@ -125,12 +189,14 @@ function estimateFromQbo(e: QboEstimate, fallbackId: string): EstimateSnapshot {
   const id = e.Id ?? fallbackId;
   const customerName = e.CustomerRef?.name?.trim() || `Customer ${e.CustomerRef?.value ?? 'unknown'}`;
   const projectName = e.DocNumber?.trim() ? `Estimate #${e.DocNumber}` : `Estimate #${id}`;
+  const projectDescription = estimateProjectDescription(e);
 
   return {
     id,
     customerId: e.CustomerRef?.value,
     customerName,
     projectName,
+    projectDescription,
     totalAmtCents: dollarsToCents(e.TotalAmt),
     status: mapEstimateTxnStatus(e.TxnStatus),
     txnDate: e.TxnDate,
@@ -175,6 +241,10 @@ function invoiceFromQbo(inv: QboInvoice, fallbackId: string): InvoiceSnapshot {
     (t) => String(t.TxnType || '').toLowerCase() === 'estimate' && t.TxnId
   );
   const customerName = inv.CustomerRef?.name?.trim() || `Customer ${inv.CustomerRef?.value ?? 'unknown'}`;
+  const customerMemoRaw = qboStringishMemo(inv.CustomerMemo as unknown);
+  const customerMemo = customerMemoRaw || undefined;
+  const privateNote = inv.PrivateNote?.trim() || undefined;
+  const projectDescription = invoiceProjectDescription(inv);
 
   return {
     id,
@@ -190,8 +260,9 @@ function invoiceFromQbo(inv: QboInvoice, fallbackId: string): InvoiceSnapshot {
     dueDate: inv.DueDate,
     billEmail: inv.BillEmail?.Address?.trim() || undefined,
     billEmailCc: inv.BillEmailCc?.Address?.trim() || undefined,
-    customerMemo: typeof inv.CustomerMemo === 'string' ? inv.CustomerMemo.trim() || undefined : undefined,
-    privateNote: inv.PrivateNote?.trim() || undefined,
+    customerMemo,
+    privateNote,
+    projectDescription,
     metaCreateTime: inv.MetaData?.CreateTime,
   };
 }

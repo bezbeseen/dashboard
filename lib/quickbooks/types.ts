@@ -23,6 +23,8 @@ export type EstimateSnapshot = {
   customerId?: string;
   customerName: string;
   projectName: string;
+  /** CustomerMemo or first line Description from QBO (card / ticket subtitle). */
+  projectDescription?: string;
   totalAmtCents: number;
   status: 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'UNKNOWN';
   txnDate?: string;
@@ -62,4 +64,6 @@ export type InvoiceSnapshot = {
   privateNote?: string;
   /** MetaData.CreateTime from QBO (when the invoice was created in QuickBooks). */
   metaCreateTime?: string;
+  /** CustomerMemo, PrivateNote, or first line Description — merged for Job.projectDescription when syncing. */
+  projectDescription?: string;
 };

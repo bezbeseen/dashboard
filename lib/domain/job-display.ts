@@ -1,11 +1,46 @@
 import type { Job } from '@prisma/client';
 
+export type JobHeadingFields = Pick<Job, 'projectName'> & {
+  projectDescription?: string | null;
+};
+
 function docRefFromProjectName(projectName: string): string | null {
   const est = projectName.match(/^Estimate\s+#?\s*(.+)$/i);
   if (est) return est[1].trim();
   const inv = projectName.match(/^Invoice\s+#?\s*(.+)$/i);
   if (inv) return inv[1].trim();
   return null;
+}
+
+/**
+ * Returns null if `desc` is empty or only repeats the estimate/invoice doc (common QBO line defaults).
+ */
+export function sanitizeJobProjectDescription(
+  projectName: string,
+  desc: string | null | undefined,
+): string | null {
+  const t = desc?.trim();
+  if (!t) return null;
+  if (isRedundantDocSubtitle(projectName, t)) return null;
+  return t;
+}
+
+function isRedundantDocSubtitle(projectName: string, desc: string): boolean {
+  const d = desc.replace(/\s+/g, ' ').trim();
+  const canonical = jobDisplayTitle({ projectName }).replace(/\s+/g, ' ').trim();
+  if (d.toLowerCase() === canonical.toLowerCase()) return true;
+
+  const ref = docRefFromProjectName(projectName);
+  if (!ref) return false;
+  const refCompact = ref.replace(/\s/g, '').toLowerCase();
+
+  const mEst = /^estimate\s*#?\s*(.+)$/i.exec(d);
+  if (mEst && mEst[1].replace(/\s/g, '').toLowerCase() === refCompact) return true;
+  const mInv = /^invoice\s*#?\s*(.+)$/i.exec(d);
+  if (mInv && mInv[1].replace(/\s/g, '').toLowerCase() === refCompact) return true;
+
+  if (/^\d+$/.test(d) && d === ref.replace(/\s/g, '')) return true;
+  return false;
 }
 
 /**
@@ -30,15 +65,16 @@ export function jobPrimaryHeading(job: Pick<Job, 'customerName' | 'projectName'>
 }
 
 /**
- * Second line under the card title: free-text project name for non-doc rows; for Estimate/Invoice
- * `projectName` lines the primary row is already `Customer #ref`, so we show the formatted doc title
- * (e.g. `Estimate #1263`) here instead of leaving the card one-line tall.
+ * Second line: QuickBooks memo / line description (`projectDescription` from sync), else legacy
+ * free-text `projectName` when it is not an Estimate/Invoice doc label.
  */
-export function jobSecondaryHeading(job: Pick<Job, 'projectName'>): string | null {
+export function jobSecondaryHeading(job: JobHeadingFields): string | null {
+  const desc = sanitizeJobProjectDescription(job.projectName, job.projectDescription);
+  if (desc) return desc;
   const raw = job.projectName?.trim();
   if (!raw) return null;
   if (docRefFromProjectName(job.projectName)) {
-    return jobDisplayTitle(job);
+    return null;
   }
   return raw;
 }

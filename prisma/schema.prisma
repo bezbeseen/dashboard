@@ -73,6 +73,8 @@ model Job {
   quickbooksInvoiceId  String?           @unique
   customerName         String
   projectName          String
+  /// From QBO: CustomerMemo and/or first line Description — human subtitle on cards (not the doc # in projectName).
+  projectDescription   String?
   estimateStatus       EstimateStatus    @default(UNKNOWN)
   invoiceStatus        InvoiceStatus     @default(NONE)
   estimateAmountCents  Int               @default(0)

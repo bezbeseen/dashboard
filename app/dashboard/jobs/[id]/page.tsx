@@ -139,6 +139,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
             <TicketDetailBack />
             <TicketDetailHeader
               projectName={job.projectName}
+              projectDescription={job.projectDescription}
               customerName={job.customerName}
               boardStatus={headerBoardStatus}
               createdAt={job.createdAt}

@@ -5,6 +5,7 @@ import { fmtDetailDate } from '@/lib/ticket/format';
 
 type Props = {
   projectName: string;
+  projectDescription?: string | null;
   customerName: string;
   boardStatus: BoardStatus;
   createdAt: Date;
@@ -13,12 +14,13 @@ type Props = {
 
 export function TicketDetailHeader({
   projectName,
+  projectDescription,
   customerName,
   boardStatus,
   createdAt,
   updatedAt,
 }: Props) {
-  const sub = jobSecondaryHeading({ projectName });
+  const sub = jobSecondaryHeading({ projectName, projectDescription: projectDescription ?? undefined });
   return (
     <header className="detail-header">
       <div>
