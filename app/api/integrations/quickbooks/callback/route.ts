@@ -1,22 +1,23 @@
-import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { exchangeAuthorizationCode } from '@/lib/quickbooks/oauth';
 import { upsertQuickBooksTokens } from '@/lib/quickbooks/tokens-db';
 
 function dashboardOn(req: NextRequest, query: string) {
-  return NextResponse.redirect(new URL(`/dashboard/settings?${query}`, req.nextUrl.origin));
+  const res = NextResponse.redirect(
+    new URL(`/dashboard/settings?${query}`, req.nextUrl.origin),
+  );
+  res.cookies.delete('qb_oauth_state');
+  res.cookies.delete('qb_oauth_redirect_uri');
+  return res;
 }
 
 export async function GET(req: NextRequest) {
-  const cookieStore = await cookies();
-  const expectedState = cookieStore.get('qb_oauth_state')?.value;
+  const expectedState = req.cookies.get('qb_oauth_state')?.value;
   const state = req.nextUrl.searchParams.get('state');
 
   if (!expectedState || !state || state !== expectedState) {
     return dashboardOn(req, 'qb_error=state');
   }
-
-  cookieStore.delete('qb_oauth_state');
 
   const oauthError = req.nextUrl.searchParams.get('error');
   if (oauthError) {
@@ -32,8 +33,7 @@ export async function GET(req: NextRequest) {
     return dashboardOn(req, 'qb_error=missing');
   }
 
-  const redirectFromCookie = cookieStore.get('qb_oauth_redirect_uri')?.value;
-  cookieStore.delete('qb_oauth_redirect_uri');
+  const redirectFromCookie = req.cookies.get('qb_oauth_redirect_uri')?.value;
   const redirectUri = redirectFromCookie || process.env.QUICKBOOKS_REDIRECT_URI?.trim();
   if (!redirectUri) {
     return dashboardOn(req, 'qb_error=config');
