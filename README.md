@@ -160,16 +160,19 @@ If you want **familiar-looking** tickets from a QuickBooks **Transaction List by
 
 ## Deploy on Vercel
 
-The new **Invoice # → Import** feature and full QuickBooks syncing both work on Vercel (and locally).
+The new **Invoice # → Import** feature and full QuickBooks syncing both work on Vercel (and locally). Longer checklist: **[DEPLOY.md](./DEPLOY.md)**.
 
-1. Create a **managed PostgreSQL** database (Neon, Vercel Postgres, RDS, etc.) and copy its connection string.
+1. Create a **managed PostgreSQL** database (e.g. [Neon](https://neon.tech)) and copy its connection strings.
 2. In the Vercel project → **Settings → Environment Variables**, set at least:
-   - `DATABASE_URL` and **`DIRECT_URL`** — see `.env.example`. Most hosts use the **same** URL for both. If your provider gives separate pooler vs “direct” migration URLs, map them accordingly; add `?sslmode=require` when the host requires TLS.
-   - `NEXT_PUBLIC_APP_URL` — your production site origin, e.g. `https://your-app.vercel.app`
-   - QuickBooks: `QUICKBOOKS_CLIENT_ID`, `QUICKBOOKS_CLIENT_SECRET`, `QUICKBOOKS_ENVIRONMENT`, `QUICKBOOKS_WEBHOOK_VERIFIER` as needed. `QUICKBOOKS_REDIRECT_URI` is optional (defaults to the deployment origin + callback path); if set, it must match an Intuit **Production** redirect URI using `https`.
-   - Gmail (if used): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`; register `https://…/api/integrations/gmail/callback` in Google Cloud
-3. Redeploy. The build runs `prisma generate`, **`prisma migrate deploy`** (applies migrations), then `next build`, so new databases get tables on first deploy.
-4. If the site still errors: check **Vercel → Deployment → Logs** for Prisma/DB messages; confirm `DATABASE_URL` is set for **Production** (and Preview if you use preview deploys).
+   - **`DATABASE_URL`** and **`DIRECT_URL`** — Prisma reads **only** these names (see `prisma/schema.prisma`). They must point at **hosted** Postgres, **not** `localhost` (Vercel cannot reach your laptop). Most hosts use the **same** URL for both; Neon often gives a **pooler** URL for app traffic and a **direct / unpooled** URL for migrations — map them per Neon’s docs; add `?sslmode=require` when required.
+   - **Neon via Vercel “Integrations”:** Vercel may inject many **`Dash_…`** variables (`Dash_DATABASE_URL`, etc.). Those do **not** replace `DATABASE_URL` / `DIRECT_URL` — copy the right Neon URLs into those two variables explicitly. Scope them for **Production** and **Preview** (or **All Environments**) so preview builds do not fall back to a wrong or missing URL.
+   - **`NEXTAUTH_SECRET`**, **`NEXTAUTH_URL`**, **`NEXT_PUBLIC_APP_URL`** — use the **exact** `https://…` origin users open for that deployment (no trailing slash). Preview URLs change per deployment unless you attach a stable domain.
+   - QuickBooks: `QUICKBOOKS_CLIENT_ID`, `QUICKBOOKS_CLIENT_SECRET`, `QUICKBOOKS_ENVIRONMENT`, `QUICKBOOKS_WEBHOOK_VERIFIER` as needed. **`QUICKBOOKS_REDIRECT_URI`** is optional; if set, path must be **`/api/integrations/quickbooks/callback`** (never paste the Gmail callback here).
+   - Gmail (if used): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`. **`GOOGLE_REDIRECT_URI`** is optional (omit so the app uses the current host + `/api/integrations/gmail/callback`).
+3. **Google Cloud → OAuth Web client → Authorized redirect URIs:** add **every** URL you use, **exactly** (Google does not allow wildcards). At minimum include **`{origin}/api/auth/callback/google`** for NextAuth sign-in on each Vercel host (production, each preview slug you care about, plus localhost if you dev locally). Also add **`…/api/integrations/gmail/callback`** (and GBP if used) for those hosts. If you see **`redirect_uri_mismatch`**, copy the `redirect_uri=` value from the error into Google Cloud and save.
+4. Redeploy. **`npm run build`** runs `scripts/assert-vercel-database-url.mjs` (fails fast if `DATABASE_URL` is missing or localhost on Vercel), then **`prisma generate`**, **`prisma migrate deploy`**, then **`next build`**. To build without migrations locally, use **`npm run build:next`**.
+5. **Sanity check:** while logged in, open **`/api/integrations/env-check`** on the deployment — JSON only, no secrets; flags DB host, OAuth redirect hints, and common misconfigurations.
+6. If the site still errors: **Vercel → Deployment → Logs** (build + runtime) for Prisma / NextAuth messages.
 
 ## Important files
 

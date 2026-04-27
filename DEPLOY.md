@@ -85,9 +85,17 @@ If you deploy on **Vercel**, you do not need the Docker image: connect the proje
 
 **Sanity check:** while logged in, open **`/api/integrations/env-check`** on the deployment (safe JSON: no secrets, includes DB host hints).
 
+### Neon from the Vercel marketplace
+
+Connecting **Neon** through Vercel can create many variables prefixed with your project name (e.g. **`Dash_…`**). **Prisma only uses `DATABASE_URL` and `DIRECT_URL`** (see `prisma/schema.prisma`). Copy Neon’s **pooled** (or “Prisma”) connection string into **`DATABASE_URL`** and the **direct / unpooled** string into **`DIRECT_URL`** if Neon documents two URLs; otherwise set both to the same string. Leaving only the prefixed variables without setting **`DATABASE_URL` / `DIRECT_URL`** will not wire the app to Neon.
+
+### Google sign-in on preview URLs
+
+Each distinct **`https://….vercel.app`** host used for **Sign in with Google** needs its own **Authorized redirect URI** in Google Cloud: **`https://<that-host>/api/auth/callback/google`**. There are no wildcards — new preview deployments get new hostnames until you use a **stable** production or custom domain for auth testing.
+
 ### Build
 
-Use the default **`npm run build`**: **`prisma generate`**, **`prisma migrate deploy`** (applies migrations to the DB in `DATABASE_URL`), then **`next build`**.
+Use the default **`npm run build`**: on Vercel, **`scripts/assert-vercel-database-url.mjs`** runs first (clear error if `DATABASE_URL` is missing or still `localhost`), then **`prisma generate`**, **`prisma migrate deploy`** (applies migrations to the DB in `DATABASE_URL`), then **`next build`**.
 
 To skip migrations in a custom pipeline, use **`npm run build:next`** and run **`npx prisma migrate deploy`** against the same database separately.
 
