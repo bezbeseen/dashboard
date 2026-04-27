@@ -46,7 +46,31 @@ export async function GET(req: NextRequest) {
   const redirectMatchesRequest =
     qbRedirectHost != null && qbRedirectHost === requestHost;
 
+  const dbUrlRaw = process.env.DATABASE_URL?.trim();
+  let databaseHostname: string | null = null;
+  let databaseHostLooksLocal = false;
+  if (dbUrlRaw) {
+    try {
+      databaseHostname = new URL(dbUrlRaw).hostname;
+      databaseHostLooksLocal =
+        databaseHostname === 'localhost' ||
+        databaseHostname === '127.0.0.1' ||
+        databaseHostname === '::1';
+    } catch {
+      databaseHostname = 'invalid_url';
+    }
+  }
+
   const hints: string[] = [];
+  if (!dbUrlRaw) {
+    hints.push(
+      'DATABASE_URL is not set. Without PostgreSQL, /dashboard and other pages throw at runtime. Add DATABASE_URL (and DIRECT_URL if you use migrations) in Vercel → Environment Variables, then redeploy.',
+    );
+  } else if (process.env.VERCEL === '1' && databaseHostLooksLocal) {
+    hints.push(
+      'DATABASE_URL points at localhost; Vercel cannot reach your laptop. Use a hosted Postgres URL (Neon, Supabase, Vercel Postgres, RDS, …), run `npx prisma migrate deploy` against that database, set the URL in Vercel, redeploy.',
+    );
+  }
   if (!quickBooksOAuthCredentialsConfigured()) {
     hints.push(
       'QuickBooks OAuth: QUICKBOOKS_CLIENT_ID / QUICKBOOKS_CLIENT_SECRET are missing or look like placeholders (e.g. literal "undefined"). Intuit will show "undefined didn\'t connect". Set real keys from developer.intuit.com → your app → Keys & credentials.',
@@ -102,10 +126,22 @@ export async function GET(req: NextRequest) {
     gbpConnections = await prisma.googleBusinessConnection.count();
   } catch {
     gbpConnections = -1;
+    if (dbUrlRaw) {
+      hints.push(
+        'Prisma could not reach the database (sample query failed). Confirm DATABASE_URL on this deployment, TLS (`?sslmode=require` if required), and that the DB allows connections from Vercel.',
+      );
+    }
   }
 
   return NextResponse.json({
     requestHost,
+    database: {
+      urlSet: Boolean(dbUrlRaw),
+      /** Parsed hostname only (no credentials). */
+      hostname: databaseHostname,
+      /** True when DATABASE_URL targets loopback; broken on Vercel deploys. */
+      hostLooksLocal: databaseHostLooksLocal,
+    },
     nextPublicAppUrl: process.env.NEXT_PUBLIC_APP_URL?.trim()
       ? 'set'
       : 'missing',
