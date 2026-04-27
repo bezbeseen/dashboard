@@ -15,7 +15,7 @@ export function qbToastFromQuery(q: {
         : q.qb_error === 'missing'
           ? 'QuickBooks returned an incomplete response. Try Connect QuickBooks again.'
           : q.qb_error === 'config'
-            ? 'QuickBooks: missing CLIENT_ID/CLIENT_SECRET, or redirect URI could not be resolved (check .env / Vercel env).'
+            ? 'QuickBooks: set real QUICKBOOKS_CLIENT_ID and QUICKBOOKS_CLIENT_SECRET in Vercel (not the literal word "undefined" or "replace-me"). If Intuit said "undefined didn\'t connect", your Client ID env var is wrong or missing.'
             : q.qb_error === 'token'
               ? `QuickBooks token exchange failed.${detail ? ` ${detail}` : ''} Check Vercel env matches Intuit (sandbox vs production keys, redirect URI exact match).`
               : null;

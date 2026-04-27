@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { getQuickBooksEnvironment, QUICKBOOKS_OAUTH_CALLBACK_PATH } from '@/lib/quickbooks/config';
+import { quickBooksOAuthCredentialsConfigured } from '@/lib/quickbooks/oauth';
 import { GMAIL_OAUTH_CALLBACK_PATH } from '@/lib/gmail/config';
 import { GBP_OAUTH_CALLBACK_PATH } from '@/lib/google-business/config';
 
@@ -46,6 +47,11 @@ export async function GET(req: NextRequest) {
     qbRedirectHost != null && qbRedirectHost === requestHost;
 
   const hints: string[] = [];
+  if (!quickBooksOAuthCredentialsConfigured()) {
+    hints.push(
+      'QuickBooks OAuth: QUICKBOOKS_CLIENT_ID / QUICKBOOKS_CLIENT_SECRET are missing or look like placeholders (e.g. literal "undefined"). Intuit will show "undefined didn\'t connect". Set real keys from developer.intuit.com → your app → Keys & credentials.',
+    );
+  }
   if (!process.env.NEXTAUTH_SECRET?.trim()) {
     hints.push(
       'NEXTAUTH_SECRET is not set — NextAuth will fail with NO_SECRET in production. In Vercel: Project → Settings → Environment Variables → add NEXTAUTH_SECRET for Production (generate: openssl rand -base64 32), then redeploy.',
@@ -106,6 +112,7 @@ export async function GET(req: NextRequest) {
     quickbooks: {
       hasClientId: Boolean(process.env.QUICKBOOKS_CLIENT_ID?.trim()),
       hasClientSecret: Boolean(process.env.QUICKBOOKS_CLIENT_SECRET?.trim()),
+      oauthCredentialsConfigured: quickBooksOAuthCredentialsConfigured(),
       hasExplicitRedirectUri: Boolean(qbRedirect),
       effectiveOAuthCallback: qbRedirect || implicitQbRedirect,
       redirectHost: qbRedirectHost,

@@ -5,6 +5,8 @@ import { groupDoneJobsByMonth, sumDoneJobMoneyCents } from '@/lib/domain/done-ar
 import { prisma } from '@/lib/db/prisma';
 import { fmtUsd } from '@/lib/ticket/format';
 
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardDonePage() {
   const jobs = await prisma.job.findMany({
     where: { archiveReason: ArchiveReason.DONE },

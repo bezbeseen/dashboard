@@ -9,13 +9,39 @@ export type IntuitTokenResponse = {
 const TOKEN_URL = 'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer';
 const AUTHORIZE_URL = 'https://appcenter.intuit.com/connect/oauth2';
 
-function requireClientCreds() {
-  const clientId = process.env.QUICKBOOKS_CLIENT_ID;
-  const clientSecret = process.env.QUICKBOOKS_CLIENT_SECRET;
-  if (!clientId || !clientSecret) {
+function trimEnv(key: 'QUICKBOOKS_CLIENT_ID' | 'QUICKBOOKS_CLIENT_SECRET'): string | undefined {
+  const t = process.env[key]?.trim();
+  return t ? t : undefined;
+}
+
+/** True if missing or a common mistaken placeholder (e.g. literal "undefined" from bad env injection). */
+function isInvalidClientCredentialValue(v: string | undefined): boolean {
+  if (v == null) return true;
+  const lower = v.toLowerCase();
+  return (
+    lower === 'undefined' ||
+    lower === 'null' ||
+    lower === 'replace-me' ||
+    lower === 'replace_me' ||
+    lower === 'your-client-id' ||
+    lower === 'your-client-secret'
+  );
+}
+
+/** Use in env-check / UI: real Intuit keys present (not empty or placeholder strings). */
+export function quickBooksOAuthCredentialsConfigured(): boolean {
+  const clientId = trimEnv('QUICKBOOKS_CLIENT_ID');
+  const clientSecret = trimEnv('QUICKBOOKS_CLIENT_SECRET');
+  return !isInvalidClientCredentialValue(clientId) && !isInvalidClientCredentialValue(clientSecret);
+}
+
+function requireClientCreds(): { clientId: string; clientSecret: string } {
+  const clientId = trimEnv('QUICKBOOKS_CLIENT_ID');
+  const clientSecret = trimEnv('QUICKBOOKS_CLIENT_SECRET');
+  if (isInvalidClientCredentialValue(clientId) || isInvalidClientCredentialValue(clientSecret)) {
     throw new Error('QUICKBOOKS_CLIENT_ID and QUICKBOOKS_CLIENT_SECRET must be set');
   }
-  return { clientId, clientSecret };
+  return { clientId: clientId as string, clientSecret: clientSecret as string };
 }
 
 export function buildQuickBooksAuthorizationUrl(state: string, redirectUri: string): string {
