@@ -18,7 +18,37 @@ export function driveParentIdForBucket(bucket: DriveBucket): string | null {
   return envFolderId(v);
 }
 
+/** Parent of all customer folders (e.g. CLIENT JOBS). When set, layout is Customer / stage / job; legacy three bucket ids are not required. */
+export function getClientJobsRootFolderId(): string | null {
+  return envFolderId(process.env.GOOGLE_DRIVE_CLIENT_JOBS_ROOT_ID);
+}
+
+/**
+ * Optional "by client" hub at the same Drive level as stage buckets: Hub / Customer / shortcuts to real job folders.
+ * Canonical job folders still live under Active|Completed|Archive; shortcuts stay in sync when jobs move.
+ */
+export function getCustomerHubFolderId(): string | null {
+  return envFolderId(process.env.GOOGLE_DRIVE_CUSTOMER_HUB_FOLDER_ID);
+}
+
+function trimOrUndef(s: string | undefined): string | undefined {
+  const t = s?.trim();
+  return t || undefined;
+}
+
+/** Folder names under each customer: Active, Completed, Archive (match your Drive naming). */
+export function stageSubfolderNameForBucket(bucket: DriveBucket): string {
+  if (bucket === 'ACTIVE') {
+    return trimOrUndef(process.env.GOOGLE_DRIVE_STAGE_ACTIVE_FOLDER_NAME) ?? '01_ACTIVE';
+  }
+  if (bucket === 'COMPLETED') {
+    return trimOrUndef(process.env.GOOGLE_DRIVE_STAGE_COMPLETED_FOLDER_NAME) ?? '02_COMPLETED';
+  }
+  return trimOrUndef(process.env.GOOGLE_DRIVE_STAGE_ARCHIVE_FOLDER_NAME) ?? '03_ARCHIVE';
+}
+
 export function isGoogleDriveBucketSyncConfigured(): boolean {
+  if (getClientJobsRootFolderId()) return true;
   return Boolean(
     driveParentIdForBucket('ACTIVE') &&
       driveParentIdForBucket('COMPLETED') &&
@@ -26,15 +56,16 @@ export function isGoogleDriveBucketSyncConfigured(): boolean {
   );
 }
 
-/** Folder id for "New Job Folder Template" (or env) - duplicated into Active when creating from the ticket. */
+/** Folder id for "New Job Folder Template" (or env) - copied when creating from the ticket. */
 export function getJobFolderTemplateId(): string | null {
   return envFolderId(process.env.GOOGLE_DRIVE_JOB_FOLDER_TEMPLATE_ID);
 }
 
 export function canCreateDriveJobFolderFromTemplate(): boolean {
+  if (!getJobFolderTemplateId()) return false;
+  if (getClientJobsRootFolderId()) return true;
   return Boolean(
-    getJobFolderTemplateId() &&
-      driveParentIdForBucket('ACTIVE') &&
+    driveParentIdForBucket('ACTIVE') &&
       driveParentIdForBucket('COMPLETED') &&
       driveParentIdForBucket('ARCHIVE'),
   );

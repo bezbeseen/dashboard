@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db/prisma';
 import { isGoogleDriveBucketSyncConfigured, driveParentIdForBucket } from '@/lib/drive/config';
+import { syncCustomerHubShortcut } from '@/lib/drive/customer-hub-shortcut';
 import { ensureFolderNamedUnderParent } from '@/lib/drive/ensure-customer-subfolder';
 import { formatDriveUserError, getDriveFolderParents, moveDriveItemToParent } from '@/lib/drive/api';
 import { driveBucketForJob } from '@/lib/drive/resolve-bucket';
@@ -57,6 +58,11 @@ export async function syncJobDriveFolder(jobId: string): Promise<SyncJobDriveFol
         where: { id: jobId },
         data: { googleDriveSyncedAt: new Date(), googleDriveLastError: null },
       });
+      try {
+        await syncCustomerHubShortcut(auth, job.customerName, job.googleDriveFolderId);
+      } catch (hubErr) {
+        console.error('[drive] customer hub shortcut', jobId, hubErr);
+      }
       return { ok: true, skipped: true, reason: 'already_placed' };
     }
     await moveDriveItemToParent(auth, job.googleDriveFolderId, targetParent);
@@ -64,6 +70,11 @@ export async function syncJobDriveFolder(jobId: string): Promise<SyncJobDriveFol
       where: { id: jobId },
       data: { googleDriveSyncedAt: new Date(), googleDriveLastError: null },
     });
+    try {
+      await syncCustomerHubShortcut(auth, job.customerName, job.googleDriveFolderId);
+    } catch (hubErr) {
+      console.error('[drive] customer hub shortcut', jobId, hubErr);
+    }
     return { ok: true, moved: true, bucket };
   } catch (e) {
     const message = formatDriveUserError(e);
