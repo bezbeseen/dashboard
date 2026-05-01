@@ -36,6 +36,7 @@ export function DashboardSidebarNav() {
   const doneActive = pathname === '/dashboard/done' || pathname.startsWith('/dashboard/done/');
   const tasksActive = pathname === '/dashboard/tasks' || pathname.startsWith('/dashboard/tasks/');
   const todosActive = pathname === '/dashboard/todos' || pathname.startsWith('/dashboard/todos/');
+  const assistantActive = pathname === '/dashboard/assistant';
 
   return (
     <ul className="metismenu" id="sidenav">
@@ -94,6 +95,14 @@ export function DashboardSidebarNav() {
             <i className="material-icons-outlined">event_note</i>
           </div>
           <div className="menu-title">To-dos</div>
+        </Link>
+      </li>
+      <li className={assistantActive ? 'mm-active' : ''}>
+        <Link href="/dashboard/assistant">
+          <div className="parent-icon">
+            <i className="material-icons-outlined">smart_toy</i>
+          </div>
+          <div className="menu-title">Dash Manager</div>
         </Link>
       </li>
 
