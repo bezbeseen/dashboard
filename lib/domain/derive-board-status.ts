@@ -11,15 +11,25 @@ type JobLike = {
   quickbooksInvoiceId?: string | null;
 };
 
-/** Allow 1¢ slack so rounding never blocks “Paid” on the board. */
-const PAID_SLACK_CENTS = 1;
+/** Exported for QuickBooks sync paidAt / consistency with board "Paid" column. */
+export const BOARD_PAID_SLACK_CENTS = 1;
+
+/** True when QBO snapshot reflects full payment — same rule as the PAID column (status or amounts + slack). */
+export function invoiceSnapshotEffectivelyPaid(
+  s: Pick<InvoiceSnapshot, 'status' | 'totalAmtCents' | 'amountPaidCents'>,
+): boolean {
+  if (s.status === 'PAID') return true;
+  const inv = s.totalAmtCents ?? 0;
+  const paid = s.amountPaidCents ?? 0;
+  return inv > 0 && paid + BOARD_PAID_SLACK_CENTS >= inv;
+}
 
 export function deriveBoardStatus(job: JobLike): BoardStatus {
   const amountPaid = job.amountPaidCents ?? 0;
   const invoiceAmount = job.invoiceAmountCents ?? 0;
 
   const paidByAmount =
-    invoiceAmount > 0 && amountPaid + PAID_SLACK_CENTS >= invoiceAmount;
+    invoiceAmount > 0 && amountPaid + BOARD_PAID_SLACK_CENTS >= invoiceAmount;
 
   if (job.invoiceStatus === InvoiceStatus.PAID || paidByAmount) {
     return BoardStatus.PAID;

@@ -9,7 +9,7 @@ import {
   Prisma,
 } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
-import { deriveBoardStatus } from '@/lib/domain/derive-board-status';
+import { deriveBoardStatus, invoiceSnapshotEffectivelyPaid } from '@/lib/domain/derive-board-status';
 import { sanitizeJobProjectDescription } from '@/lib/domain/job-display';
 import {
   computeQbOrderingAt,
@@ -53,7 +53,6 @@ export async function upsertJobFromEstimate(
 
   const updated = await prisma.$transaction(async (tx) => {
     const existing = await tx.job.findUnique({ where: { quickbooksEstimateId: snapshot.id } });
-    const wasArchived = existing?.archivedAt != null;
     const parsedEst = estimateCreatedAtFromSnapshot(snapshot);
     const nextEstCreated = parsedEst ?? existing?.estimateCreatedAtQbo ?? null;
     const nextInvCreated = existing?.invoiceCreatedAtQbo ?? null;
@@ -106,7 +105,7 @@ export async function upsertJobFromEstimate(
           },
         });
 
-    const boardStatus = wasArchived ? job.boardStatus : deriveBoardStatus(job);
+    const boardStatus = deriveBoardStatus(job);
     const updated = await tx.job.update({ where: { id: job.id }, data: { boardStatus } });
 
     await tx.activityLog.create({
@@ -138,7 +137,6 @@ export async function upsertJobFromInvoice(
       : null;
 
     const target = byInvoice ?? byEstimate;
-    const wasArchived = target?.archivedAt != null;
 
     const parsedInv = invoiceCreatedAtFromSnapshot(snapshot);
     const nextInvCreated = parsedInv ?? target?.invoiceCreatedAtQbo ?? null;
@@ -166,7 +164,9 @@ export async function upsertJobFromInvoice(
       invoiceStatus: mapInvoiceStatus(snapshot.status),
       invoiceAmountCents: snapshot.totalAmtCents,
       amountPaidCents: snapshot.amountPaidCents,
-      paidAt: snapshot.status === 'PAID' ? new Date() : null,
+      paidAt: invoiceSnapshotEffectivelyPaid(snapshot)
+        ? (target?.paidAt ?? new Date())
+        : null,
       quickbooksEstimateId: target?.quickbooksEstimateId ?? snapshot.linkedEstimateId,
       invoiceCreatedAtQbo: nextInvCreated,
       qbOrderingAt,
@@ -188,7 +188,7 @@ export async function upsertJobFromInvoice(
             invoiceStatus: mapInvoiceStatus(snapshot.status),
             invoiceAmountCents: snapshot.totalAmtCents,
             amountPaidCents: snapshot.amountPaidCents,
-            paidAt: snapshot.status === 'PAID' ? new Date() : null,
+            paidAt: invoiceSnapshotEffectivelyPaid(snapshot) ? new Date() : null,
             quickbooksEstimateId: snapshot.linkedEstimateId ?? undefined,
             invoiceCreatedAtQbo: nextInvCreated,
             qbOrderingAt,
@@ -199,7 +199,7 @@ export async function upsertJobFromInvoice(
           },
         });
 
-    const boardStatus = wasArchived ? job.boardStatus : deriveBoardStatus(job);
+    const boardStatus = deriveBoardStatus(job);
     const updated = await tx.job.update({ where: { id: job.id }, data: { boardStatus } });
 
     await tx.activityLog.create({
