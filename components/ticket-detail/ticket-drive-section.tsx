@@ -50,10 +50,11 @@ export function TicketDriveSection({
     <section id={sectionId} className="ticket-detail-panel">
       <h2 className="detail-section-title">Google Drive</h2>
       <p className="small text-body-secondary mb-3">
-        Link the job folder once, or create one from your Drive template. Moves place the folder under{' '}
-        <strong>Active / Completed / Archive ? customer name (auto-created) ? this job</strong> so repeat clients stay
-        grouped. Uses the same Google account as the ticket Gmail mailbox when set, otherwise the most recently connected
-        mailbox.
+        Link the job folder once, or create one from your Drive template. Moves place the folder directly under{' '}
+        <strong>Active, Completed, or Archive</strong> (each job folder is named{' '}
+        <code className="small">customer - date - project</code>). If you set{' '}
+        <code className="small">GOOGLE_DRIVE_CUSTOMER_HUB_FOLDER_ID</code>, shortcuts grouped by client also appear there.
+        Uses the same Google account as the ticket Gmail mailbox when set, otherwise the most recently connected mailbox.
       </p>
       {!bucketsOk ? (
         <p className="small text-warning-emphasis mb-3">
@@ -87,7 +88,7 @@ export function TicketDriveSection({
             Create folder from template
           </button>
           <p className="small text-body-secondary mt-2 mb-0">
-            Duplicates your template under <strong>Active ? customer name ? job folder</strong> named{' '}
+            Duplicates your template into <strong>Active</strong> as a job folder named{' '}
             <code className="small">customer - date - project</code>. Clear the link first if you already have a folder.
           </p>
         </form>

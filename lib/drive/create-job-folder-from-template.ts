@@ -2,7 +2,6 @@ import { prisma } from '@/lib/db/prisma';
 import { formatDriveUserError } from '@/lib/drive/api';
 import { driveParentIdForBucket, getJobFolderTemplateId } from '@/lib/drive/config';
 import { duplicateDriveFolderTree } from '@/lib/drive/duplicate-template-folder';
-import { ensureFolderNamedUnderParent } from '@/lib/drive/ensure-customer-subfolder';
 import { buildDriveJobFolderName } from '@/lib/drive/job-folder-name';
 import { syncJobDriveFolder } from '@/lib/drive/sync-job-folder';
 import { getGmailOAuth2ClientForConnection, getGmailOAuth2ClientForApi } from '@/lib/gmail/tokens-db';
@@ -56,8 +55,7 @@ export async function createJobFolderFromTemplate(jobId: string): Promise<Create
 
   let newFolderId: string;
   try {
-    const customerParent = await ensureFolderNamedUnderParent(auth, activeParent, job.customerName);
-    newFolderId = await duplicateDriveFolderTree(auth, templateId, customerParent, name);
+    newFolderId = await duplicateDriveFolderTree(auth, templateId, activeParent, name);
   } catch (e) {
     const message = formatDriveUserError(e);
     await prisma.job

@@ -11,7 +11,7 @@ function escapeDriveQueryLiteral(s: string): string {
 
 /**
  * Ensures a direct child folder of `parentId` exists with the given display name (sanitized).
- * Used for CLIENT JOBS / Active / *Customer* / *Job* hierarchy.
+ * Used for the optional customer shortcut hub (Hub / Customer / shortcuts). Stage buckets hold job folders flat.
  */
 export async function ensureFolderNamedUnderParent(
   auth: OAuth2Client,

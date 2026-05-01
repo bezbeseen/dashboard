@@ -1,7 +1,6 @@
 import { prisma } from '@/lib/db/prisma';
 import { isGoogleDriveBucketSyncConfigured, driveParentIdForBucket } from '@/lib/drive/config';
 import { syncCustomerHubShortcut } from '@/lib/drive/customer-hub-shortcut';
-import { ensureFolderNamedUnderParent } from '@/lib/drive/ensure-customer-subfolder';
 import { formatDriveUserError, getDriveFolderParents, moveDriveItemToParent } from '@/lib/drive/api';
 import { driveBucketForJob } from '@/lib/drive/resolve-bucket';
 import { getGmailOAuth2ClientForConnection, getGmailOAuth2ClientForApi } from '@/lib/gmail/tokens-db';
@@ -19,8 +18,8 @@ async function getAuthForDriveJob(job: { gmailConnectionId: string | null }) {
 }
 
 /**
- * Moves the job's linked Drive folder under Bucket / Customer name / (this job folder)
- * based on `boardStatus` and `archivedAt`.
+ * Moves the job's linked Drive folder directly under the Active / Completed / Archive bucket
+ * (job folder name includes client and project). Optional customer hub shortcuts stay separate.
  */
 export async function syncJobDriveFolder(jobId: string): Promise<SyncJobDriveFolderResult> {
   if (!isGoogleDriveBucketSyncConfigured()) {
@@ -51,7 +50,7 @@ export async function syncJobDriveFolder(jobId: string): Promise<SyncJobDriveFol
 
   try {
     const auth = await getAuthForDriveJob(job);
-    const targetParent = await ensureFolderNamedUnderParent(auth, bucketRoot, job.customerName);
+    const targetParent = bucketRoot;
     const parents = await getDriveFolderParents(auth, job.googleDriveFolderId);
     if (parents.includes(targetParent)) {
       await prisma.job.update({
