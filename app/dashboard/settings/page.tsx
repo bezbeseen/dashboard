@@ -88,7 +88,10 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         <section className="settings-section card border rounded-3 p-4 mb-3 bg-body">
           <h2 className="h6 fw-semibold mb-2">Gmail</h2>
           <p className="small text-body-secondary mb-3">
-            Up to three mailboxes (e.g. you, partner, contact@). Used when syncing threads on tickets.
+            Up to three mailboxes (e.g. you, partner, contact@). Used when syncing threads on tickets. Connect also grants
+            Google Drive access so the app can move linked job folders when you set{' '}
+            <code className="small">GOOGLE_DRIVE_*_FOLDER_ID</code> in the server environment — reconnect here after
+            enabling those variables so the new scope is on your refresh token.
           </p>
           <GmailSidebarHint />
           <GmailRedirectUriHint />

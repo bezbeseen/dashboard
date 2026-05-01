@@ -43,10 +43,12 @@ export function postActionRedirect(req: Request, jobId: string, fallbackPath = '
     const incoming = new URL(req.url);
     const base = `${incoming.protocol}//${incoming.host}`;
     const ref = req.headers.get('referer') || '';
+    const fallback = new URL(fallbackPath, base);
+    const tail = `${fallback.search}${fallback.hash}`;
     if (ref.includes(`/dashboard/jobs/${jobId}`)) {
-      return new URL(`/dashboard/jobs/${jobId}`, base);
+      return new URL(`/dashboard/jobs/${jobId}${tail}`, base);
     }
-    return new URL(fallbackPath, base);
+    return fallback;
   } catch {
     const base = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     return new URL(fallbackPath, base);

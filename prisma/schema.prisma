@@ -107,6 +107,12 @@ model Job {
   gmailConnection      GmailConnection? @relation(fields: [gmailConnectionId], references: [id], onDelete: SetNull)
   gmailMessages        GmailSyncedMessage[]
   tasks                Task[]
+  /// Google Drive folder for this job (paste folder URL or ID from the shared drive). Used to move the folder when board/archive changes.
+  googleDriveFolderId     String?
+  /// Last time the folder was confirmed under the correct Active / Completed / Archive parent.
+  googleDriveSyncedAt     DateTime?
+  /// Last Drive API error (cleared on success) — shown on the ticket for quick debugging.
+  googleDriveLastError    String?
 
   @@index([boardStatus])
   @@index([archivedAt])

@@ -17,7 +17,9 @@ import { TicketActivityLogSection } from '@/components/ticket-detail/ticket-acti
 import { TicketDetailFooter } from '@/components/ticket-detail/ticket-detail-footer';
 import { TicketDetailToc, type TicketTocItem } from '@/components/ticket-detail/ticket-detail-toc';
 import { TicketTasksSection } from '@/components/ticket-detail/ticket-tasks-section';
+import { TicketDriveSection } from '@/components/ticket-detail/ticket-drive-section';
 import { boardStatusForTicketHeader } from '@/lib/domain/derive-board-status';
+import { listJobDriveFolderPreview } from '@/lib/drive/list-for-job';
 import { fetchInvoiceById } from '@/lib/quickbooks/client';
 import { fetchInvoiceActivityTimeline, isSyntheticQuickBooksId } from '@/lib/quickbooks/invoice-activity';
 import type { InvoiceActivityTimeline } from '@/lib/quickbooks/types-activity';
@@ -33,6 +35,9 @@ type PageProps = {
     gmail_sync_error?: string;
     gmail_synced?: string;
     qb_imported?: string;
+    drive_saved?: string;
+    drive_error?: string;
+    drive_sync_ok?: string;
   }>;
 };
 
@@ -45,6 +50,16 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
   const gmailSyncError = sp.gmail_sync_error ? decodeURIComponent(sp.gmail_sync_error) : null;
   const gmailSyncedOk = sp.gmail_synced === '1';
   const qbImportedOk = sp.qb_imported === '1';
+  const driveSaved = sp.drive_saved === '1';
+  let driveError: string | null = null;
+  if (sp.drive_error) {
+    try {
+      driveError = decodeURIComponent(sp.drive_error);
+    } catch {
+      driveError = sp.drive_error;
+    }
+  }
+  const driveSyncOk = sp.drive_sync_ok === 'moved' ? 'moved' : sp.drive_sync_ok === 'already' ? 'already' : null;
 
   const gmailConnections = await prisma.gmailConnection.findMany({
     orderBy: { googleEmail: 'asc' },
@@ -82,6 +97,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
   }
 
   const headerBoardStatus = boardStatusForTicketHeader(job, qboInvoice);
+  const { items: driveChildren, listError: driveListError } = await listJobDriveFolderPreview(id);
   const invoiceTotalDisplayCents = qboInvoice?.totalAmtCents ?? job.invoiceAmountCents;
   const paidDisplayCents = qboInvoice?.amountPaidCents ?? job.amountPaidCents;
 
@@ -114,6 +130,7 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
   tocItems.push(
     { id: 'ticket-money', label: 'Money' },
     { id: 'ticket-production', label: 'Production' },
+    { id: 'ticket-drive', label: 'Google Drive' },
     { id: 'ticket-quickbooks', label: 'QuickBooks IDs' },
     { id: 'ticket-qb-activity', label: 'Invoice activity' },
   );
@@ -134,9 +151,20 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
 
   return (
     <div className="board-page board-page-detail">
-      {qbImportedOk ? (
+      {qbImportedOk ||
+      driveSaved ||
+      driveError ||
+      driveSyncOk ? (
         <div className="board-toasts px-3 px-md-4 pt-3" role="status">
-          <div className="board-toast board-toast-ok">Invoice imported from QuickBooks.</div>
+          {qbImportedOk ? <div className="board-toast board-toast-ok">Invoice imported from QuickBooks.</div> : null}
+          {driveSaved ? <div className="board-toast board-toast-ok">Drive folder link saved.</div> : null}
+          {driveError ? <div className="board-toast board-toast-error">{driveError}</div> : null}
+          {driveSyncOk === 'moved' ? (
+            <div className="board-toast board-toast-ok">Drive folder moved to match this ticket.</div>
+          ) : null}
+          {driveSyncOk === 'already' ? (
+            <div className="board-toast board-toast-ok">Drive folder was already in the right place.</div>
+          ) : null}
         </div>
       ) : null}
       <div className="ticket-detail-layout">
@@ -179,6 +207,18 @@ export default async function JobDetailPage({ params, searchParams }: PageProps)
             readyAt={job.readyAt}
             deliveredAt={job.deliveredAt}
             paidAt={job.paidAt}
+          />
+
+          <TicketDriveSection
+            sectionId="ticket-drive"
+            jobId={job.id}
+            archivedAt={job.archivedAt}
+            boardStatus={job.boardStatus}
+            googleDriveFolderId={job.googleDriveFolderId}
+            googleDriveSyncedAt={job.googleDriveSyncedAt}
+            googleDriveLastError={job.googleDriveLastError}
+            driveChildren={driveChildren}
+            driveListError={driveListError}
           />
 
           <TicketQuickBooksIdsSection

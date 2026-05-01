@@ -22,6 +22,7 @@ import {
   slackNotifyArchived,
   slackNotifyProductionChange,
 } from '@/lib/slack/notify';
+import { scheduleSyncJobDriveFolder } from '@/lib/drive/sync-job-folder';
 
 function mapEstimateStatus(value: EstimateSnapshot['status']): EstimateStatus {
   switch (value) {
@@ -50,7 +51,7 @@ export async function upsertJobFromEstimate(
   const estimateStatus = mapEstimateStatus(snapshot.status);
   const realmId = opts?.realmId;
 
-  return prisma.$transaction(async (tx) => {
+  const updated = await prisma.$transaction(async (tx) => {
     const existing = await tx.job.findUnique({ where: { quickbooksEstimateId: snapshot.id } });
     const wasArchived = existing?.archivedAt != null;
     const parsedEst = estimateCreatedAtFromSnapshot(snapshot);
@@ -120,6 +121,8 @@ export async function upsertJobFromEstimate(
 
     return updated;
   });
+  scheduleSyncJobDriveFolder(updated.id);
+  return updated;
 }
 
 export async function upsertJobFromInvoice(
@@ -128,7 +131,7 @@ export async function upsertJobFromInvoice(
 ) {
   const realmId = opts?.realmId;
 
-  return prisma.$transaction(async (tx) => {
+  const updated = await prisma.$transaction(async (tx) => {
     const byInvoice = await tx.job.findUnique({ where: { quickbooksInvoiceId: snapshot.id } });
     const byEstimate = snapshot.linkedEstimateId
       ? await tx.job.findUnique({ where: { quickbooksEstimateId: snapshot.linkedEstimateId } })
@@ -208,6 +211,9 @@ export async function upsertJobFromInvoice(
 
     return updated;
   });
+
+  scheduleSyncJobDriveFolder(updated.id);
+  return updated;
 }
 
 export async function archiveJob(jobId: string, reason: ArchiveReason, message: string) {
@@ -238,6 +244,7 @@ export async function archiveJob(jobId: string, reason: ArchiveReason, message: 
     await slackNotifyArchived({ label, job: current, jobId });
   }
 
+  scheduleSyncJobDriveFolder(jobId);
   return updated;
 }
 
@@ -284,5 +291,6 @@ export async function updateProductionStatus(jobId: string, productionStatus: Pr
     jobId,
   });
 
+  scheduleSyncJobDriveFolder(jobId);
   return finalJob;
 }
