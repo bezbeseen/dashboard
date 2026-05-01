@@ -21,7 +21,7 @@ function normFolderName(s: string): string {
   return s.toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
-/** Names like "06_Invoices Quotes" from templates ù avoids duplicating a separate "Invoices and quotes". */
+/** Names like "06_Invoices Quotes" from templates; avoids duplicating a separate "Invoices and quotes". */
 function folderLooksLikeInvoicesQuotesFolder(name: string): boolean {
   const n = name.toLowerCase();
   if (!n.includes('invoice')) return false;
