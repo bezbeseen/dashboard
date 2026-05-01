@@ -50,9 +50,10 @@ export function TicketDriveSection({
     <section id={sectionId} className="ticket-detail-panel">
       <h2 className="detail-section-title">Google Drive</h2>
       <p className="small text-body-secondary mb-3">
-        Link the job folder once, or create one from your Drive template. The dash moves it under Active, Completed, or
-        Archive when the ticket changes (and after QuickBooks sync). Uses the same Google account as the ticket Gmail
-        mailbox when set, otherwise the most recently connected mailbox.
+        Link the job folder once, or create one from your Drive template. Moves place the folder under{' '}
+        <strong>Active / Completed / Archive ? customer name (auto-created) ? this job</strong> so repeat clients stay
+        grouped. Uses the same Google account as the ticket Gmail mailbox when set, otherwise the most recently connected
+        mailbox.
       </p>
       {!bucketsOk ? (
         <p className="small text-warning-emphasis mb-3">
@@ -86,7 +87,7 @@ export function TicketDriveSection({
             Create folder from template
           </button>
           <p className="small text-body-secondary mt-2 mb-0">
-            Duplicates your template into <strong>Active</strong> and names it{' '}
+            Duplicates your template under <strong>Active ? customer name ? job folder</strong> named{' '}
             <code className="small">customer - date - project</code>. Clear the link first if you already have a folder.
           </p>
         </form>

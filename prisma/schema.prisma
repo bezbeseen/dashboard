@@ -119,6 +119,18 @@ model Job {
   @@index([qbOrderingAt])
 }
 
+/// Optional Drive "home" folder for a QuickBooks customer — one link per company + customer, shown on every ticket for that client.
+model CustomerDriveFolder {
+  id                   String   @id @default(cuid())
+  quickbooksCompanyId  String
+  quickbooksCustomerId String
+  googleDriveFolderId  String
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([quickbooksCompanyId, quickbooksCustomerId])
+}
+
 /// Each Google account you authorize (readonly). Connect yours, your partner’s, and contact@ separately.
 model GmailConnection {
   id                     String   @id @default(cuid())

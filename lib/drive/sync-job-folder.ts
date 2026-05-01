@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db/prisma';
 import { isGoogleDriveBucketSyncConfigured, driveParentIdForBucket } from '@/lib/drive/config';
+import { ensureFolderNamedUnderParent } from '@/lib/drive/ensure-customer-subfolder';
 import { formatDriveUserError, getDriveFolderParents, moveDriveItemToParent } from '@/lib/drive/api';
 import { driveBucketForJob } from '@/lib/drive/resolve-bucket';
 import { getGmailOAuth2ClientForConnection, getGmailOAuth2ClientForApi } from '@/lib/gmail/tokens-db';
@@ -17,8 +18,8 @@ async function getAuthForDriveJob(job: { gmailConnectionId: string | null }) {
 }
 
 /**
- * Moves the job's linked Drive folder under the Active / Completed / Archive parent
- * based on `boardStatus` and `archivedAt`. No-op if env parents or folder id are missing.
+ * Moves the job's linked Drive folder under Bucket / Customer name / (this job folder)
+ * based on `boardStatus` and `archivedAt`.
  */
 export async function syncJobDriveFolder(jobId: string): Promise<SyncJobDriveFolderResult> {
   if (!isGoogleDriveBucketSyncConfigured()) {
@@ -31,6 +32,7 @@ export async function syncJobDriveFolder(jobId: string): Promise<SyncJobDriveFol
       id: true,
       archivedAt: true,
       boardStatus: true,
+      customerName: true,
       googleDriveFolderId: true,
       gmailConnectionId: true,
     },
@@ -41,13 +43,14 @@ export async function syncJobDriveFolder(jobId: string): Promise<SyncJobDriveFol
   }
 
   const bucket = driveBucketForJob(job);
-  const targetParent = driveParentIdForBucket(bucket);
-  if (!targetParent) {
+  const bucketRoot = driveParentIdForBucket(bucket);
+  if (!bucketRoot) {
     return { ok: false, error: 'Drive bucket folder id missing from environment.' };
   }
 
   try {
     const auth = await getAuthForDriveJob(job);
+    const targetParent = await ensureFolderNamedUnderParent(auth, bucketRoot, job.customerName);
     const parents = await getDriveFolderParents(auth, job.googleDriveFolderId);
     if (parents.includes(targetParent)) {
       await prisma.job.update({
